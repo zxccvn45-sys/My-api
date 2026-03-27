@@ -1,8 +1,10 @@
 from flask import Flask, request, jsonify
+import secrets
 
 app = Flask(__name__)
 
-# In-memory storage of API keys (for demonstration)
+# In-memory storage for user API keys
+# Format: {user_id: api_key}
 api_keys = {}
 
 # ===== GENERATE =====
@@ -12,9 +14,10 @@ def generate():
     if not user_id:
         return jsonify({"error": "Missing user_id"}), 400
 
-    # Create a simple API key
-    key = f"key_for_{user_id}"
+    # Generate a random 32-character hex API key
+    key = secrets.token_hex(16)  # 32 characters
     api_keys[user_id] = key
+
     return jsonify({"api_key": key})
 
 # ===== CHECK =====
@@ -24,11 +27,10 @@ def check():
     if not key:
         return jsonify({"error": "Missing key"}), 400
 
-    # Check if the key is valid
+    # Find if key exists in storage
     if key in api_keys.values():
         return jsonify({"status": "valid"})
-    else:
-        return jsonify({"status": "invalid"})
+    return jsonify({"status": "invalid"})
 
 # ===== HEALTH CHECK =====
 @app.route("/")
