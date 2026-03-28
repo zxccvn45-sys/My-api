@@ -1,43 +1,92 @@
 from flask import Flask, request, jsonify
-import secrets
+import json
+import os
 
 app = Flask(__name__)
+DB_FILE = "users.json"
 
-# In-memory storage for user API keys
-# Format: {user_id: api_key}
-api_keys = {}
+def load_data():
+    if not os.path.exists(DB_FILE):
+        return {}
+    with open(DB_FILE, "r") as f:
+        return json.load(f)
 
-# ===== GENERATE =====
-@app.route("/generate")
-def generate():
-    user_id = request.args.get("user_id")
-    if not user_id:
-        return jsonify({"error": "Missing user_id"}), 400
+def save_data(data):
+    with open(DB_FILE, "w") as f:
+        json.dump(data, f, indent=4)
 
-    # Generate a random 32-character hex API key
-    key = secrets.token_hex(16)  # 32 characters
-    api_keys[user_id] = key
-
-    return jsonify({"api_key": key})
-
-# ===== CHECK =====
-@app.route("/check")
-def check():
-    key = request.args.get("key")
-    if not key:
-        return jsonify({"error": "Missing key"}), 400
-
-    # Find if key exists in storage
-    if key in api_keys.values():
-        return jsonify({"status": "valid"})
-    return jsonify({"status": "invalid"})
-
-# ===== HEALTH CHECK =====
 @app.route("/")
 def home():
-    return "API is running!"
+    return "API Running ✅"
 
-# ===== RUN SERVER =====
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+@app.route("/validate", methods=["POST"])
+def validate():
+    key = request.json.get("key")
+    data = load_data()
+
+    for user in data:
+        if key in data[user]["keys"]:
+            return jsonify({"status": "valid"})
+
+    return jsonify({"status": "invalid"})
+
+@app.route("/add_key", methods=["POST"])
+def add_key():
+    user_id = str(request.json.get("user_id"))
+    key = request.json.get("key")
+
+    data = load_data()
+
+    if user_id not in data:
+        data[user_id] = {"keys": []}
+
+    data[user_id]["keys"].append(key)
+    save_data(data)
+
+    return jsonify({"status": "added"})from flask import Flask, request, jsonify
+import json
+import os
+
+app = Flask(__name__)
+DB_FILE = "users.json"
+
+def load_data():
+    if not os.path.exists(DB_FILE):
+        return {}
+    with open(DB_FILE, "r") as f:
+        return json.load(f)
+
+def save_data(data):
+    with open(DB_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+@app.route("/")
+def home():
+    return "API Running ✅"
+
+@app.route("/validate", methods=["POST"])
+def validate():
+    key = request.json.get("key")
+    data = load_data()
+
+    for user in data:
+        if key in data[user]["keys"]:
+            return jsonify({"status": "valid"})
+
+    return jsonify({"status": "invalid"})
+
+@app.route("/add_key", methods=["POST"])
+def add_key():
+    user_id = str(request.json.get("user_id"))
+    key = request.json.get("key")
+
+    data = load_data()
+
+    if user_id not in data:
+        data[user_id] = {"keys": []}
+
+    data[user_id]["keys"].append(key)
+    save_data(data)
+
+    return jsonify({"status": "added"})
     
